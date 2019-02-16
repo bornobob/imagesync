@@ -9,6 +9,11 @@ GFY_INFO_LINK = 'https://gfycat.com/cajax/get'
 
 
 def convert_to_gif(path):
+    """
+    Converts a given video to the gif format.
+    Uses FFmpeg.
+    :param path: the path to the video to convert.
+    """
     new_path = path[:path.rfind('.') + 1] + 'gif'
     ff = ffmpy.FFmpeg(
         inputs={path: None},
@@ -19,8 +24,16 @@ def convert_to_gif(path):
 
 
 class GifDownloader:
+    """
+    A small class containing static methods used to download GIFs from a number of sources.
+    """
     @staticmethod
     def download_gfycat(url, folder):
+        """
+        Downloads a gif from gfycat.
+        :param url: the gfycat url.
+        :param folder: the folder to save the gif into.
+        """
         res = re.findall(r'https?://(?:www\.)?gfycat\.com/([a-zA-Z]+)', url)
         if res:
             gif_id = res[0]
@@ -41,6 +54,11 @@ class GifDownloader:
 
     @staticmethod
     def download_imgur_gif(url, folder):
+        """
+        Downloads a gif from imgur.
+        :param url: the imgur gif url.
+        :param folder: the folder to save the gif into.
+        """
         r = requests.get(url[:-1], stream=True)
         code = re.findall(r'\.com/([^.]+)', url)[0]
         filename = '{}/{}-{}.{}'.format(folder,

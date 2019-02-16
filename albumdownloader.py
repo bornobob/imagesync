@@ -26,11 +26,17 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 
 
 class ImgurAlbumException(Exception):
+    """
+    An Exception used in the ImgurAlbumDownloader class.
+    """
     def __init__(self, msg=''):
         self.msg = msg
 
 
 class ImgurAlbumDownloader:
+    """
+    An adapted version of an imgur album downloader class written by Alex Gisby.
+    """
     def __init__(self, album_url):
         self.album_url = album_url
         self.image_callbacks = []
