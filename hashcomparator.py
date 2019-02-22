@@ -4,6 +4,24 @@ from pathlib import Path
 from imagehash import hex_to_hash
 from itertools import product
 from imagehasher import ImageHasher
+from threading import Thread
+
+
+class HashComparatorThread(Thread):
+    def __init__(self, to_compare, result_dict, existing_hashes):
+        Thread.__init__(self)
+        self.to_compare = to_compare
+        self.result_dict = result_dict
+        self.existing_hashes = existing_hashes
+
+    def run(self):
+        pass
+
+
+class HashBoolValue:
+    def __init__(self, image_hash, value=False):
+        self.image_hash = image_hash
+        self.duplicate = value
 
 
 class HashComparator:
@@ -11,11 +29,12 @@ class HashComparator:
     The HashComparator class makes use of the ImageHasher class in order to compare images in a directory to find
     duplicate images.
     """
-    def __init__(self, directory, old_images, max_diff=6):
+    def __init__(self, directory, old_images, threads=4, max_diff=6):
         """
         Creates an instance of the HashComparator class.
         :param directory: the directory to find and remove duplicates of.
         :param old_images: a list of images that were previously in the directory.
+        :param threads: number of threads used to compare hashes
         :param max_diff: the maximum difference in bits two hashes may be to be treated equal (6-8ish)
         """
         self.directory = directory
@@ -23,6 +42,7 @@ class HashComparator:
         self.old_images = old_images
         self.hashes = self.get_existing_hashes()
         self.max_diff = max_diff
+        self.threads = threads
 
     def get_existing_hashes(self):
         """
@@ -70,34 +90,34 @@ class HashComparator:
                 remove('{}/{}'.format(self.directory, img))
         return new_images
 
+    def init_new_hashes(self, images):
+        new_hashes = {}
+        for img in images:
+            try:
+                img_hash = ImageHasher('{}/{}'.format(self.directory, img)).compute_hash()
+                new_hashes[img] = HashBoolValue(img_hash)
+            except FileNotFoundError:
+                pass
+        return new_hashes
+
     def find_new_duplicates(self):
         """
         Finds and removes duplicate new images by comparing them to the existing hashes.
         """
-        duplicates = []
-        duplicate_hashes = []
 
-        # find and remove images
         new_images = self.find_new_non_duplicates()
-        for h, img in product(self.hashes, new_images):
-            try:
-                new_hash = ImageHasher('{}/{}'.format(self.directory, img)).compute_hash()
-                if h - new_hash <= self.max_diff:
-                    duplicates.append(img)
-                    duplicate_hashes.append(str(new_hash))
-            except FileNotFoundError:
-                pass
+        new_hashes = self.init_new_hashes(new_images)
 
-        # add new images to the existing hashes so they are saved for next time
-        for img in new_images:
-            try:
-                image_hash = ImageHasher('{}/{}'.format(self.directory, img)).compute_hash()
-                if str(image_hash) not in duplicate_hashes:
-                    self.hashes.append(image_hash)
-            except FileNotFoundError:
-                pass
+        group_sizes = int(len(new_images) / self.threads) + 1
+        partitioned_new_images = [new_images[x:x+group_sizes] for x in range(0, len(new_images), group_sizes)]
 
-        return duplicates
+        threads = []
+        for i in range(self.threads):
+            t = HashComparatorThread(partitioned_new_images[i], new_hashes, self.hashes)
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
 
     def save_hashes(self):
         """
