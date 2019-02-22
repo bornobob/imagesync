@@ -1,6 +1,6 @@
 from hashcomparator import HashComparator
 from imagedownloader import ImageDownloader
-from os import listdir, remove, mkdir
+from os import listdir, mkdir
 from pathlib import Path
 
 
@@ -39,10 +39,6 @@ class ImageSyncer:
         for r in self.reddits:
             downloader.download_reddit_images(**r)
 
-        for img in hc.find_new_duplicates():
-            try:
-                remove('{}/{}'.format(self.path, img))
-            except OSError or FileNotFoundError:
-                pass
+        hc.remove_duplicates()
 
         hc.save_hashes()

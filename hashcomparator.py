@@ -2,23 +2,65 @@ from os import listdir, remove
 import json
 from pathlib import Path
 from imagehash import hex_to_hash
-from itertools import product
+from itertools import product, zip_longest
 from imagehasher import ImageHasher
 from threading import Thread
 
 
+def list_chunks(lst, n):
+    """
+    Splits a list in n parts.
+    From: https://stackoverflow.com/questions/2130016
+    """
+    return [lst[i::n] for i in range(n)]
+
+
 class HashComparatorThread(Thread):
-    def __init__(self, to_compare, result_dict, existing_hashes):
+    """
+    A Thread instance to multi-thread the process of creating hashes and comparing them to existing hashes.
+    """
+    def __init__(self, to_compare, result_dict, existing_hashes, max_diff):
+        """
+        Creates an instance of the HashComparatorThread class.
+        :param to_compare: list of images (paths) to compare.
+        :param result_dict: the resulting dictionary.
+        :param existing_hashes: the existing hashes to compare against.
+        :param max_diff: the maximum difference in bits two hashes may be to be treated equal (6-8ish)
+        """
         Thread.__init__(self)
         self.to_compare = to_compare
         self.result_dict = result_dict
         self.existing_hashes = existing_hashes
+        self.max_diff = max_diff
+
+    def init_new_hashes(self):
+        """
+        Hashes the images the Thread should compare.
+        """
+        for img in self.to_compare:
+            try:
+                img_hash = ImageHasher(img).compute_hash()
+                self.result_dict[img] = HashBoolValue(img_hash)
+            except FileNotFoundError:
+                pass
 
     def run(self):
-        pass
+        """
+        Initiates the hashes and compares them to the existing hashes.
+        Marks and removes duplicate images.
+        """
+        self.init_new_hashes()
+        for img, old_hash in product(self.to_compare, self.existing_hashes):
+            if img in self.result_dict.keys():
+                if self.result_dict[img].image_hash - old_hash <= self.max_diff:
+                    self.result_dict[img].duplicate = True
+                    remove(img)
 
 
 class HashBoolValue:
+    """
+    A small class to store both a hash object and a boolean value
+    """
     def __init__(self, image_hash, value=False):
         self.image_hash = image_hash
         self.duplicate = value
@@ -62,7 +104,7 @@ class HashComparator:
         new_images = []
         for img in listdir(self.directory):
             if img not in self.old_images:
-                new_images.append(img)
+                new_images.append('{}/{}'.format(self.directory, img))
         return new_images
 
     def find_new_non_duplicates(self):
@@ -74,7 +116,7 @@ class HashComparator:
         added_images = self.get_new_images()
         for image in added_images:
             try:
-                image_hash = ImageHasher('{}/{}'.format(self.directory, image)).compute_hash()
+                image_hash = ImageHasher(image).compute_hash()
                 found = False
                 for h in new_hashes:
                     diff = image_hash - h
@@ -87,37 +129,29 @@ class HashComparator:
                 pass
         for img in added_images:
             if img not in new_images:
-                remove('{}/{}'.format(self.directory, img))
+                remove(img)
         return new_images
 
-    def init_new_hashes(self, images):
-        new_hashes = {}
-        for img in images:
-            try:
-                img_hash = ImageHasher('{}/{}'.format(self.directory, img)).compute_hash()
-                new_hashes[img] = HashBoolValue(img_hash)
-            except FileNotFoundError:
-                pass
-        return new_hashes
-
-    def find_new_duplicates(self):
+    def remove_duplicates(self):
         """
         Finds and removes duplicate new images by comparing them to the existing hashes.
         """
+        new_images = self.find_new_non_duplicates()  # find the NEW images
+        new_hashes = {}  # dictionary to save image-hash combos and track if they are a duplicate
 
-        new_images = self.find_new_non_duplicates()
-        new_hashes = self.init_new_hashes(new_images)
+        partitioned_new_images = list(list_chunks(new_images, self.threads))
 
-        group_sizes = int(len(new_images) / self.threads) + 1
-        partitioned_new_images = [new_images[x:x+group_sizes] for x in range(0, len(new_images), group_sizes)]
-
-        threads = []
+        threads = []  # create and start and join threads
         for i in range(self.threads):
-            t = HashComparatorThread(partitioned_new_images[i], new_hashes, self.hashes)
+            t = HashComparatorThread(partitioned_new_images[i], new_hashes, self.hashes, self.max_diff)
             threads.append(t)
             t.start()
         for t in threads:
             t.join()
+
+        for k in new_hashes.keys():  # save non duplicates to current hashes
+            if not new_hashes[k].duplicate:
+                self.hashes.append(new_hashes[k].image_hash)
 
     def save_hashes(self):
         """
