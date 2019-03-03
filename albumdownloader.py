@@ -39,7 +39,6 @@ class ImgurAlbumDownloader:
     """
     def __init__(self, album_url):
         self.album_url = album_url
-        self.image_callbacks = []
 
         match = re.match("(https?)://(www\.)?(?:m\.)?imgur\.com/(a|gallery)/([a-zA-Z0-9]+)(#[0-9]+)?", album_url)
         if not match:
@@ -67,15 +66,6 @@ class ImgurAlbumDownloader:
         for i in self.imageIDs:
             self.cnt[i[1]] += 1
 
-    def num_images(self):
-        return len(self.imageIDs)
-
-    def list_extensions(self):
-        return self.cnt.most_common()
-
-    def album_key(self):
-        return self.album_key
-
     def save_images(self, folder_name=False):
         self.imageIDs = list(set(self.imageIDs))
 
@@ -96,10 +86,6 @@ class ImgurAlbumDownloader:
                 counter
             )
             path = os.path.join(album_folder, prefix + image[0] + image[1])
-
-            # Run the callbacks:
-            for fn in self.image_callbacks:
-                fn(counter, image_url, path)
 
             # Actually download the thing
             if not os.path.isfile(path):
