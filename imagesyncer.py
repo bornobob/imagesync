@@ -1,6 +1,6 @@
 from hashcomparator import HashComparator
 from imagedownloader import ImageDownloader
-from os import listdir, mkdir
+from os import mkdir
 from pathlib import Path
 
 
@@ -32,13 +32,11 @@ class ImageSyncer:
         """
         Synchronizes the images as described in the __init__ function using the HashComparator and ImageDownloader.
         """
-        old_images = listdir(self.path)
-        hc = HashComparator(self.path, old_images)
-
         downloader = ImageDownloader(self.path)
         for r in self.reddits:
             downloader.download_reddit_images(**r)
 
+        hc = HashComparator(self.path, downloader.downloaded_images)
         hc.remove_duplicates()
 
         hc.save_hashes()

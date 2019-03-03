@@ -71,17 +71,17 @@ class HashComparator:
     The HashComparator class makes use of the ImageHasher class in order to compare images in a directory to find
     duplicate images.
     """
-    def __init__(self, directory, old_images, threads=4, max_diff=6):
+    def __init__(self, directory, new_images, threads=4, max_diff=6):
         """
         Creates an instance of the HashComparator class.
         :param directory: the directory to find and remove duplicates of.
-        :param old_images: a list of images that were previously in the directory.
+        :param new_images: the list of images that have been added to the directory.
         :param threads: number of threads used to compare hashes
         :param max_diff: the maximum difference in bits two hashes may be to be treated equal (6-8ish)
         """
         self.directory = directory
         self.hashes_file = '{}/hashes.json'.format(self.directory)
-        self.old_images = old_images
+        self.new_images = new_images
         self.hashes = self.get_existing_hashes()
         self.max_diff = max_diff
         self.threads = threads
@@ -97,23 +97,13 @@ class HashComparator:
                     to_return.append(hex_to_hash(h))
         return to_return
 
-    def get_new_images(self):
-        """
-        Returns the images in a directory that are not in the old_images list.
-        """
-        new_images = []
-        for img in listdir(self.directory):
-            if img not in self.old_images:
-                new_images.append('{}/{}'.format(self.directory, img))
-        return new_images
-
     def find_new_non_duplicates(self):
         """
         Finds and removes duplicate duplicates of the NEW images (excluding the existing images).
         """
         new_images = []
         new_hashes = []
-        added_images = self.get_new_images()
+        added_images = self.new_images
         for image in added_images:
             try:
                 image_hash = ImageHasher(image).compute_hash()

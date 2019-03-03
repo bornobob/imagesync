@@ -39,6 +39,7 @@ class ImgurAlbumDownloader:
     """
     def __init__(self, album_url):
         self.album_url = album_url
+        self.downloaded_images = []
 
         match = re.match("(https?)://(www\.)?(?:m\.)?imgur\.com/(a|gallery)/([a-zA-Z0-9]+)(#[0-9]+)?", album_url)
         if not match:
@@ -91,5 +92,6 @@ class ImgurAlbumDownloader:
             if not os.path.isfile(path):
                 try:
                     urllib.request.urlretrieve(image_url, path)
+                    self.downloaded_images.append(path)
                 except:
                     os.remove(path)

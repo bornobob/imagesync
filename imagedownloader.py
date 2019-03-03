@@ -20,6 +20,7 @@ class ImageDownloader:
         :param save_dir: The directory where the images/GIFs will be saved.
         """
         self.save_dir = save_dir
+        self.downloaded_images = []
 
     def download_image(self, url, filename):
         """
@@ -84,26 +85,36 @@ class ImageDownloader:
                     if self.is_imgur_album(url):  # imgur album
                         downloader = ImgurAlbumDownloader(url)
                         downloader.save_images(self.save_dir)
+                        self.downloaded_images.extend(downloader.downloaded_images)
                     if 'imgur.com' in url and url.endswith('.gifv'):  # imgur gif
-                        GifDownloader.download_imgur_gif(url, self.save_dir)
+                        downloaded_gif = GifDownloader.download_imgur_gif(url, self.save_dir)
+                        if downloaded_gif:
+                            self.downloaded_images.append(downloaded_gif)
                     elif 'imgur.com' in url and 'i.imgur' not in url:  # other imgur links
                         if url.endswith('.gifv'):  # gif
-                            GifDownloader.download_imgur_gif(url, self.save_dir)
+                            downloaded_gif = GifDownloader.download_imgur_gif(url, self.save_dir)
+                            if downloaded_gif:
+                                self.downloaded_images.append(downloaded_gif)
                         else:  # imgur image but not in i.imgur form
                             img_r = requests.get(url, headers={'User-agent': 'totally legit user agent'}).text
                             match = re.findall(r'<link +rel=\"image_src\" +href=\"([^\"]+)\"', img_r)
                             if match:
-                                self.download_image(match[0], '{}-{}'.format(
-                                    datetime.strftime(datetime.now(),
-                                                      '%d-%M-%Y--%H-%M-%S-%f'),
-                                    counter))
+                                image_name = '{}-{}'.format(datetime.strftime(datetime.now(),
+                                                                              '%d-%M-%Y--%H-%M-%S-%f'),
+                                                            counter)
+                                self.download_image(match[0], image_name)
+                                self.downloaded_images.append('{}/{}.jpg'.format(self.save_dir, image_name))
                                 counter += 1
                     elif 'gfycat.com' in url:  # gfycat link
-                        GifDownloader.download_gfycat(url, self.save_dir)
+                        downloaded_gif = GifDownloader.download_gfycat(url, self.save_dir)
+                        if downloaded_gif:
+                            self.downloaded_images.append(downloaded_gif)
                     else:  # hopefully just an image
-                        self.download_image(url, '{}-{}'.format(datetime.strftime(datetime.now(),
-                                                                                  '%d-%M-%Y--%H-%M-%S-%f'),
-                                                                counter))
+                        image_name = '{}-{}'.format(datetime.strftime(datetime.now(),
+                                                                      '%d-%M-%Y--%H-%M-%S-%f'),
+                                                    counter)
+                        self.download_image(url, image_name)
+                        self.downloaded_images.append('{}/{}.jpg'.format(self.save_dir, image_name))
                         counter += 1
-                except:
+                except:  # this could be a wide range of exceptions
                     pass

@@ -21,6 +21,7 @@ def convert_to_gif(path):
     )
     ff.run()
     os.remove(path)
+    return new_path
 
 
 class GifDownloader:
@@ -50,7 +51,7 @@ class GifDownloader:
                     for chunk in vid.iter_content(chunk_size=1024*1024):
                         if chunk:
                             f.write(chunk)
-                convert_to_gif(filename)
+                return convert_to_gif(filename)
 
     @staticmethod
     def download_imgur_gif(url, folder):
@@ -69,4 +70,4 @@ class GifDownloader:
             for chunk in r.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     f.write(chunk)
-        convert_to_gif(filename)
+        return convert_to_gif(filename)
