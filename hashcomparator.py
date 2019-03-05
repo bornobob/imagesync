@@ -1,8 +1,8 @@
-from os import listdir, remove
+from os import remove
 import json
 from pathlib import Path
 from imagehash import hex_to_hash
-from itertools import product, zip_longest
+from itertools import product
 from imagehasher import ImageHasher
 from threading import Thread
 
